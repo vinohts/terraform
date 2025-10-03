@@ -19,7 +19,7 @@ pipeline {
 
     stage('Terraform Init') {
       steps {
-        withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
           sh 'terraform init -input=false'
         }
       }
@@ -27,7 +27,7 @@ pipeline {
 
     stage('Terraform Plan') {
       steps {
-        withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
           sh 'terraform plan -out=tfplan -input=false'
           sh 'terraform show -no-color tfplan > plan.txt'
         }
@@ -39,11 +39,11 @@ pipeline {
       when {
         anyOf {
           expression { return params.AUTO_APPROVE == true }
-          expression { return params.AUTO_APPROVE == 'true' } // in case of string
+          expression { return params.AUTO_APPROVE == 'true' }
         }
       }
       steps {
-        withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
           sh 'terraform apply -input=false -auto-approve tfplan'
         }
       }
@@ -55,7 +55,7 @@ pipeline {
       }
       steps {
         input message: "Approve terraform apply?", ok: "Apply"
-        withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
           sh 'terraform apply -input=false -auto-approve tfplan'
         }
       }
