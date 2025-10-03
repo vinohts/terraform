@@ -3,6 +3,7 @@ pipeline {
 
   parameters {
     booleanParam(name: 'AUTO_APPROVE', defaultValue: false, description: 'If true, terraform apply will run automatically')
+    booleanParam(name: 'DESTROY', defaultValue: false, description: 'If true, terraform destroy will run instead of apply')
   }
 
   environment {
@@ -26,6 +27,9 @@ pipeline {
     }
 
     stage('Terraform Plan') {
+      when {
+        expression { return !params.DESTROY } // skip plan if destroying
+      }
       steps {
         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
           sh 'terraform plan -out=tfplan -input=false'
@@ -37,9 +41,12 @@ pipeline {
 
     stage('Approval / Apply') {
       when {
-        anyOf {
-          expression { return params.AUTO_APPROVE == true }
-          expression { return params.AUTO_APPROVE == 'true' }
+        allOf {
+          expression { return !params.DESTROY }
+          anyOf {
+            expression { return params.AUTO_APPROVE == true }
+            expression { return params.AUTO_APPROVE == 'true' }
+          }
         }
       }
       steps {
@@ -51,12 +58,27 @@ pipeline {
 
     stage('Manual Apply (if not auto)') {
       when {
-        expression { return params.AUTO_APPROVE == false }
+        allOf {
+          expression { return !params.DESTROY }
+          expression { return params.AUTO_APPROVE == false }
+        }
       }
       steps {
         input message: "Approve terraform apply?", ok: "Apply"
         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
           sh 'terraform apply -input=false -auto-approve tfplan'
+        }
+      }
+    }
+
+    stage('Terraform Destroy') {
+      when {
+        expression { return params.DESTROY }
+      }
+      steps {
+        input message: "Are you sure you want to destroy all resources?", ok: "Destroy"
+        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+          sh 'terraform destroy -auto-approve'
         }
       }
     }
