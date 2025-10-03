@@ -7,7 +7,7 @@ pipeline {
 
   environment {
     TF_IN_AUTOMATION = "true"
-    # optional: set TF_LOG=TRACE for debugging
+    // optional: set TF_LOG=TRACE for debugging
   }
 
   stages {
@@ -19,7 +19,6 @@ pipeline {
 
     stage('Terraform Init') {
       steps {
-        // Use username/password credentials if AWS plugin not present.
         withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
           sh 'terraform init -input=false'
         }
